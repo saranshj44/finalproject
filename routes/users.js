@@ -9,6 +9,11 @@ var UserSchema=mongoose.Schema({
   post:[{
     type:mongoose.Schema.Types.ObjectId,
     ref:'post'
+  }],
+  msg:[{
+    chatid:String,
+    user:String,
+    reciver:String
   }]
 })
 UserSchema.plugin(plm);

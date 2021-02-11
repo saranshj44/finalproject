@@ -4,7 +4,9 @@ var localstrategy=require('passport-local');
 var router = express.Router();
 var usermodel=require('./users');
 var postmodel=require('./post');
-var commentmodel=require('./comment')
+var commentmodel=require('./comment');
+var messagemodel=require('./message');
+var uuid=require('uuid');
 
 passport.use(new localstrategy(usermodel.authenticate()));
 
@@ -94,4 +96,53 @@ router.get('/post/:postid/react',function(req,res){
     }
   })
 })
+
+router.post('/message/:reciver',function(req,res){
+  usermodel.findOne({username:req.session.passport.user})
+  .then(function(founduser){
+    var chat=founduser.msg.find(e=>{return e.reciver==req.params.reciver});
+    if(chat===undefined){
+      var chatid=uuid.v4();
+      messagemodel.create({
+        message:req.body.message,
+        author:founduser.username,
+        reciver:req.params.reciver,
+        chatid:chatid,
+      })
+      .then(function(messagecreated){
+        founduser.msg.push({chatid:chatid,user:founduser.username,reciver:req.params.reciver})
+        founduser.save()
+        .then(function(savedmessage){
+          usermodel.findOne({username:req.params.reciver})
+          .then(function(foundedreciver){
+            foundedreciver.msg.push({chatid:chatid,user:foundedreciver.username,reciver:founduser.username})
+            foundedreciver.save()
+            .then(function(savedreciver){
+              res.json(founduser.msg);
+            })
+          })
+        })
+      })
+    }
+    else{
+      messagemodel.create({
+        message:req.body.message,
+        author:founduser.username,
+        reciver:req.params.reciver,
+        chatid:chat.chatid,
+      })
+      .then(function(messagecreated){
+        res.json(messagecreated);
+      })
+    }
+  })
+})
+
+router.get('/messages',function(req,res){
+  usermodel.findOne({username:req.session.passport.user})
+  .then(function(userfound){
+    res.json(userfound.msg);
+  })
+})
+
 module.exports = router;
